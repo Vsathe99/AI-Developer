@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import axios from "../config/axios";
 import { initializeSocket, receiveMesage, sendMessage } from "../config/socket";
 import { UserContext } from "../context/user.context";
+import Markdown from 'markdown-to-jsx';
 
 const Project = () => {
   const location = useLocation();
@@ -11,6 +12,7 @@ const Project = () => {
   const [selectUserId, setSelectUserId] = useState([]);
   const [project, setProject] = useState(location.state.project);
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
 
   const { user } = useContext(UserContext);
   const messageBox = useRef(null);
@@ -44,11 +46,12 @@ const Project = () => {
   }
 
   function send() {
-    sendMessage("project-message", {
+    const newMessage = {
       message: message,
       sender: user,
-    });
-    appendOutgoingMessage(message);
+    };
+    sendMessage("project-message", newMessage);
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
     setMessage("");
   }
 
@@ -57,7 +60,7 @@ const Project = () => {
 
     receiveMesage("project-message", (data) => {
       console.log(data);
-      appendIncomingMessage(data);
+      setMessages((prevMessages) => [...prevMessages, data]);
     });
 
     axios
@@ -80,53 +83,6 @@ const Project = () => {
       });
   }, []);
 
-  function appendIncomingMessage(messageObject) {
-    const messageBox = document.querySelector(".message-box");
-    const message = document.createElement("div");
-    message.classList.add(
-      "message",
-      "max-w-56",
-      "flex",
-      "flex-col",
-      "p-2",
-      "bg-slate-50",
-      "w-fit",
-      "rounded-md"
-    );
-    message.innerHTML = `
-        <small class="opacity-65 text-xs">${messageObject.sender.email}</small>
-        <p class="text-sm">${messageObject.message}</p>
-    `;
-    messageBox.appendChild(message);
-    scrollToBottom();
-  }
-
-  function appendOutgoingMessage(message) {
-    const messageBox = document.querySelector(".message-box");
-    const messageElement = document.createElement("div");
-    messageElement.classList.add(
-      "message",
-      "max-w-56",
-      "ml-auto",
-      "flex",
-      "flex-col",
-      "p-2",
-      "bg-slate-50",
-      "w-fit",
-      "rounded-md"
-    );
-    messageElement.innerHTML = `
-        <small class="opacity-65 text-xs">${user.email}</small>
-        <p class="text-sm">${message}</p>
-    `;
-    messageBox.appendChild(messageElement);
-    scrollToBottom();
-  }
-
-  function scrollToBottom() {
-    messageBox.current.scrollTop = messageBox.current.scrollHeight
-  }
-
   return (
     <main className="h-screen w-screen flex">
       <section className="left relative flex flex-col h-screen min-w-96 bg-slate-300">
@@ -146,7 +102,25 @@ const Project = () => {
           <div
             ref={messageBox}
             className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto max-h-full "
-          ></div>
+          >
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`message max-w-80 flex flex-col p-2 w-fit rounded-md ${
+                  msg.sender._id === user._id ? "ml-auto bg-slate-50" : "bg-slate-100"
+                }`}
+              >
+                <small className="opacity-65 text-xs">{msg.sender.email}</small>
+                <div className="text-sm">
+                  {msg.sender._id === 'ai' ? 
+                  <div className="overflow-auto bg-slate-950 text-white p-2 rounded-lg "> 
+                    <Markdown>{msg.message}</Markdown> 
+                  </div>
+                  : <p>{msg.message}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div className="inputField w-full flex absolute bottom-0">
             <input
