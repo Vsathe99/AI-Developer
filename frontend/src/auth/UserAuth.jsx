@@ -6,18 +6,22 @@ const UserAuth = ({ children }) => {
 
     const { user } = useContext(UserContext)
     const [ loading, setLoading ] = useState(true)
-    const token = localStorage.getItem('token')
+    
     const navigate = useNavigate()
 
 
 
 
     useEffect(() => {
+        const token = localStorage.getItem('token')
+        console.log(token)
+        console.log(user)
         if (user) {
             setLoading(false)
         }
 
         if (!token) {
+            console.log('no token')
             navigate('/login')
         }
 
@@ -25,7 +29,8 @@ const UserAuth = ({ children }) => {
             navigate('/login')
         }
 
-    }, [])
+    }, [user])
+    
 
     if (loading) {
         return <div>Loading...</div>
