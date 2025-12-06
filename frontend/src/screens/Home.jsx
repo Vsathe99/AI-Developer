@@ -27,7 +27,7 @@ const Home = () => {
 
   useEffect(() => {
     axios.get("/projects/all").then((res) => {
-      console.log(res.data.allUserProjects)
+
       setProject(res.data.allUserProjects)
     }).catch((err) => {
       console.log(err)

@@ -7,6 +7,8 @@ import Markdown from 'markdown-to-jsx';
 import hljs from "highlight.js";
 import "highlight.js/styles/tokyo-night-dark.css"; 
 import { getWebContainer } from "../config/webContainer";
+import { useSelector } from "react-redux";
+
 
 
 
@@ -40,7 +42,13 @@ const Project = () => {
   const [webContainer, setWebContainer] = useState(null)
   const [ iframeUrl, setIframeUrl ] = useState(null)
 
-  const { user } = useContext(UserContext);
+  // Resizable panels state
+  const [leftWidth, setLeftWidth] = useState(384); // min-w-96 = 384px
+  const [explorerWidth, setExplorerWidth] = useState(208); // min-w-52 = 208px
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingExplorer, setIsResizingExplorer] = useState(false);
+
+  const user = useSelector((state) => state.user);
   const messageBox = useRef(null);
   const [users, setUsers] = useState([]);
 
@@ -101,7 +109,37 @@ const Project = () => {
         </div>)
 }
 
+  // Handle mouse move for resizing
   useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isResizingLeft) {
+        const newWidth = Math.max(300, Math.min(e.clientX, 600));
+        setLeftWidth(newWidth);
+      }
+      if (isResizingExplorer) {
+        const newWidth = Math.max(150, Math.min(e.clientX - leftWidth, 400));
+        setExplorerWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingExplorer(false);
+    };
+
+    if (isResizingLeft || isResizingExplorer) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingLeft, isResizingExplorer, leftWidth]);
+
+  useEffect(() => {
+    console.log("user", user._id);
     initializeSocket(project._id);
 
     if(!webContainer){
@@ -112,8 +150,7 @@ const Project = () => {
     }
 
     receiveMesage("project-message", (data) => {
-      console.log(data);
-
+      console.log("received message", data);
       let message;
       try {
         message = JSON.parse(data.message); 
@@ -124,8 +161,8 @@ const Project = () => {
       }
       if(message.fileTree){
         setFileTree(message.fileTree)
-      
       }
+
       setMessages((prevMessages) => [...prevMessages, data]);
     });
 
@@ -133,7 +170,7 @@ const Project = () => {
       .get(`/projects/get-project/${location.state.project._id}`)
       .then((res) => {
         setProject(res.data.project);
-        console.log(res.data.project);
+  
       })
       .catch((err) => {
         console.log(err);
@@ -149,12 +186,13 @@ const Project = () => {
       });
   }, []);
 
-  function scrollToBottom() {
-    messageBox.current.scrollTop = messageBox.current.scrollHeight;
-  }
+
   return (
     <main className="h-screen w-screen flex">
-      <section className="left relative flex flex-col h-screen min-w-96 bg-slate-300">
+      <section 
+        className="left relative flex flex-col h-screen bg-slate-300"
+        style={{ width: `${leftWidth}px` }}
+      >
         <header className="flex justify-between items-center p-2 px-4 w-full bg-slate-100 absolute z-10 top-0">
           <button className="flex gap-2" onClick={() => setIsModalOpen(true)}>
             <i className="ri-add-fill mr-1"></i>
@@ -176,10 +214,10 @@ const Project = () => {
               <div
                 key={index}
                 className={`message max-w-80 flex flex-col p-2 w-fit rounded-md ${
-                  msg.sender._id === user._id ? "ml-auto bg-slate-50" : "bg-slate-100"
+                  msg.sender?._id === user._id ? "ml-auto bg-slate-50" : "bg-slate-100"
                 }`}
               >
-                <small className="opacity-65 text-xs">{msg.sender.email}</small>
+                <small className="opacity-65 text-xs">{msg.sender?.email}</small>
                 <div className="text-sm">
                   {msg.sender._id === 'ai' ? 
                   WriteAiMessage(msg.message)
@@ -236,8 +274,17 @@ const Project = () => {
         </div>
       </section>
 
+      {/* Resizer for left panel */}
+      <div
+        className="w-1 bg-slate-400 hover:bg-blue-500 cursor-col-resize transition-colors"
+        onMouseDown={() => setIsResizingLeft(true)}
+      />
+
       <section className="right bg-red-50 flex-grow h-full flex ">
-        <div className="explorer h-full max-w-64 min-w-52  bg-slate-200 ">
+        <div 
+          className="explorer h-full bg-slate-200"
+          style={{ width: `${explorerWidth}px` }}
+        >
           <div className="file-tree w-full">
             {
               Object.keys(fileTree).map((file,indx) => (
@@ -259,7 +306,11 @@ const Project = () => {
           </div>
         </div>
 
-        
+        {/* Resizer for explorer panel */}
+        <div
+          className="w-1 bg-slate-400 hover:bg-blue-500 cursor-col-resize transition-colors"
+          onMouseDown={() => setIsResizingExplorer(true)}
+        />
 
           <div className="code-editor flex flex-col flex-grow h-full">
               <div className="top flex justify-between" >

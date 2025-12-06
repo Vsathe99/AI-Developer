@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import redisClient from "../services/redis.service.js";
+import  redisClient  from "../services/redis.service.js";  // or correct relative path
 
 
 export const authUser = async (req, res, next) => {

@@ -1,7 +1,7 @@
 import userModel from '../models/user.model.js';
 import * as userService from '../services/user.service.js';
 import { validationResult } from 'express-validator';
-import redisClient from '../services/redis.service.js';
+
 
 
 export const createUserController = async (req, res) => {
@@ -51,8 +51,18 @@ export const loginUserController = async (req, res) => {
 }
 
 export const profileUserController = async (req, res) => {
-    console.log(req.user);
-    res.status(200).json({user: req.user});
+    try {
+    console.log(req.user);   
+    const email = req.user.email; 
+    const user = await userModel.findOne({email}).select('-password'); // exclude password
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ email: user.email });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 }
 
 export const logoutUserController = async (req, res) => {
@@ -79,3 +89,18 @@ export const getAllUsersController = async (req, res) => {
         res.status(400).json({error: error.message});
     }
 }
+
+
+
+export const profile = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.user.id).select('-password'); // exclude password
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ email: user.email });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};

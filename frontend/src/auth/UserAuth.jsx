@@ -1,46 +1,50 @@
-import { useContext, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { UserContext } from '../context/user.context'
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
+import { useSelector, useDispatch } from 'react-redux';
+import { loginUser } from '../redux/userSlice';
+import axios from '../config/axios';
 
 const UserAuth = ({ children }) => {
+  const user = useSelector((state) => state.user);
+  const dispatch = useDispatch();
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-    const { user } = useContext(UserContext)
-    const [ loading, setLoading ] = useState(true)
-    
-    const navigate = useNavigate()
+  useEffect(() => {
+    const token = localStorage.getItem('token');
 
-
-
-
-    useEffect(() => {
-        const token = localStorage.getItem('token')
-        console.log(token)
-        console.log(user)
-        if (user) {
-            setLoading(false)
+    const rehydrateUser = async () => {
+      if (token && !user.isLoggedIn) {
+        try {
+          const res = await axios.get('/users/profile');
+          
+          dispatch(loginUser({ email: res.data.email }));
+          setLoading(false);
+        } catch (err) {
+          console.log('Token invalid or expired',err);
+          localStorage.removeItem('token');
+          navigate('/login');
         }
+      } else if (!token) {
+        navigate('/login');
+      } else {
+        setLoading(false);
+      }
+    };
 
-        if (!token) {
-            console.log('no token')
-            navigate('/login')
-        }
+    rehydrateUser();
+  }, [user, dispatch, navigate]);
 
-        if (!user) {
-            navigate('/login')
-        }
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
-    }, [user])
-    
+  return <>{children}</>;
+};
 
-    if (loading) {
-        return <div>Loading...</div>
-    }
+UserAuth.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
-
-    return (
-        <>
-            {children}</>
-    )
-}
-
-export default UserAuth
+export default UserAuth;
